@@ -14,10 +14,17 @@ import os, sys, time, random, math, csv
 from lib import *
 from calibration import *
 
+def checkCalibration():
+    # Change directory to script directory
+    _thisDir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(_thisDir)
+    fileName = os.path.join(os.getcwd(), 'monitor_calibration.csv')
+    return os.path.isfile(fileName)
+
 calibrated = checkCalibration()
-while not calibrated:
-    calibrate()
-    calibrated = checkCalibration()
+if not calibrated:
+    disp('You must run the calibration.py script to set up your monitor')
+    core.quit()
 
 # Experimental variables
 letters = list("EPB") # Possible stimulus characters to be displayed

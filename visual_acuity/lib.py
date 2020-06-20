@@ -18,8 +18,8 @@ def csvOutput(output, fileName):
     
 # Opens the csvFile and returns the values stored within as a dictionary
 def csvInput(fileName):
-    with open(fileName,'a', newline ='') as csvFile:
-        reader = csv.DictReader(csvFile)
+    with open(fileName) as csvFile:
+        reader = csv.DictReader(csvFile, delimiter = ',')
         dict = next(reader)
     csvFile.close()
     return dict
@@ -67,7 +67,7 @@ def createPsychopyObjects():
     mon = monitors.Monitor('TV') # Change this to the name of your display monitor
     mon.setWidth(float(tvInfo['Width (cm)']))
     win = visual.Window(
-        size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=False, screen=-1, 
+        size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=True, screen=-1, 
         winType='pyglet', allowGUI=True, allowStencil=False,
         monitor= mon, color='grey', colorSpace='rgb',
         blendMode='avg', useFBO=True, 
@@ -83,12 +83,12 @@ def genDisplay(displayInfo):
     displayText = visual.TextStim(win=displayInfo['win'],
     text= displayInfo['text'],
     font='Arial',
-    pos=(displayInfo['xPos'], displayInfo['yPos']),\
-    height=displayInfo['heightCm'],\
-    wrapWidth=500,\
+    pos=(displayInfo['xPos'], displayInfo['yPos']),
+    height=displayInfo['heightCm'],
+    wrapWidth=500,
     ori=0, 
-    color=displayInfo['color'],\
-    colorSpace='rgb',\
+    color=displayInfo['color'],
+    colorSpace='rgb',
     opacity=1, 
     languageStyle='LTR',
     depth=0.0)
