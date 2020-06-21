@@ -12,9 +12,8 @@ from numpy import (sin, cos, tan, log, log10, pi, average,
 from numpy.random import random, randint, normal, shuffle
 import os, sys, time, random, math
 #from lib import *
-
+'''
 keyPress = keyboard.Keyboard()
-
 print('starting')
 i = 0
 while i < 100:
@@ -32,6 +31,19 @@ while i < 100:
     print(key.name)
     time.sleep(1)
     i += 1
-    
+'''
+kb = keyboard.Keyboard()
+def getKeyboardInput():
+    kb.clearEvents(eventType='keyboard')
+    keys = []
+    while len(keys) == 0:
+        core.wait(0.5)
+        keys = kb.getKeys()
+    if keys[0].name == 'escape':
+        core.quit()
+    return keys[0].name
 
+
+for i in range(50):
+    print(getKeyboardInput())
 core.quit()

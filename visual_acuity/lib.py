@@ -96,7 +96,6 @@ def genDisplay(displayInfo):
     
 # Returns a displayText object for the center dot
 def genDot(win, color):
-    
     return genDisplay({'text': '.', 'xPos': 0, 'yPos': 1.1, 'heightCm': 4, 'color': color, 'win': win})
 
 # Takes a value in the form of angle of visual opening and returns the 
