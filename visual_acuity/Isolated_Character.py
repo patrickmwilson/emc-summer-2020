@@ -1,7 +1,8 @@
 # Isolated Character
 #
 # Displays a single character in the peripheral region for the subject to 
-# identify. 
+# identify. To see a photo of this experiment, open the 'ic.png' file within 
+# the 'Protocol Pictures' folder
 from __future__ import absolute_import, division
 import psychopy
 psychopy.useVersion('latest')
@@ -9,12 +10,15 @@ from psychopy import locale_setup, prefs, sound, gui, visual, core, data, event,
 from psychopy.constants import (NOT_STARTED, STARTED, PLAYING, PAUSED,
                                 STOPPED, FINISHED, PRESSED, RELEASED, FOREVER)
 from psychopy.hardware import keyboard
+from psychopy.event import waitKeys
+import numpy as np  
+from numpy import (sin, cos, tan, log, log10, pi, average,
+                   sqrt, std, deg2rad, rad2deg, linspace, asarray)
+from numpy.random import random, randint, normal, shuffle
 import os, sys, time, random, math, csv
 
-from lib import *
-
 # Opens the csvFile and writes the output argument specified by to the file
-def csvOutput(output, fileName):
+def csvOutput(output):
     with open(fileName,'a', newline ='') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerow(output)
@@ -39,30 +43,6 @@ if not os.path.isfile(fileName):
     
 tvInfo = csvInput(os.path.join(os.getcwd(),'monitor_calibration.csv'))
 
-# Experimental variables
-letters = list("EPB") # Possible stimulus characters to be displayed
-keys = ['e', 'p', 'b', 'space'] # Keypresses to listen for 
-angles = [0, 5, 10, 15, 20, 25, 30, 35, 40] # Retinal eccentricity (opening angle) values to test
-directions = [0, 2] # 0 = Right (0°), 2 = Left (180°)
-distToScreen = 50 # Distance between the subject and the screen in centimeters
-trials = 1 # Number of trails to run
-green= [.207, 1, .259] # Defining green color for center dot
-
-# Opens the csvFile and writes the output argument specified by to the file
-def csvOutput(output, fileName):
-    with open(fileName,'a', newline ='') as csvFile:
-        writer = csv.writer(csvFile)
-        writer.writerow(output)
-    csvFile.close()
-    
-# Opens the csvFile and returns the values stored within as a dictionary
-def csvInput(fileName):
-    with open(fileName) as csvFile:
-        reader = csv.DictReader(csvFile, delimiter = ',')
-        dict = next(reader)
-    csvFile.close()
-    return dict
-
 # End the experiment: close the window, flush the log, and quit the script
 def endExp():
     win.flip()
@@ -70,24 +50,12 @@ def endExp():
     win.close()
     core.quit()
 
-mon = monitors.Monitor('TV') # Change this to the name of your display monitor
-mon.setWidth(float(tvInfo['Width (cm)']))
-win = visual.Window(
-    size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=True, screen=-1, 
-    winType='pyglet', allowGUI=True, allowStencil=False,
-    monitor= mon, color='grey', colorSpace='rgb',
-    blendMode='avg', useFBO=True, 
-    units='cm')
-kb = keyboard.Keyboard
-
-# Input dialogue: record data to csv file? If yes, create the csv file for data output
-fileName = createOutputFile('Isolated Character')
-
+# Input dialogue: record data to csv file?
 datadlg = gui.Dlg(title='Record Data?', pos=None, size=None, style=None,\
-    labelButtonOK=' Yes ', labelButtonCancel=' No ', screen=-1)
+     labelButtonOK=' Yes ', labelButtonCancel=' No ', screen=-1)
 ok_data = datadlg.show()
 recordData = datadlg.OK
-    
+
 if recordData:
     # Change directory to script directory
     _thisDir = os.path.dirname(os.path.abspath(__file__))
@@ -114,22 +82,41 @@ if recordData:
     # Print column headers if the output file does not exist
     if not os.path.isfile(fileName):
         csvOutput(["Direction","Letter Height (degrees)", "Eccentricity (degrees)"], fileName) 
-        
-def getKeyboardInput(keyL = None, loop = True, waitTime = 0.5):
-    kb.clearEvents(eventType='keyboard')
-    keys = []
-    while 1:
-        core.wait(waitTime)
-        keys = kb.getKeys(keyList = keyL)
-        if loop and len(keys) == 0:
-            continue 
-        break
-    if len(keys) == 0:
-        return None 
-    elif keys[0].name == 'escape':
-        core.quit()
-    return keys[0].name
-        
+
+# Input dialogue: test horizontal angles only?
+datadlg = gui.Dlg(title='Select directions to test', screen=-1)
+datadlg.addField('Directions: ', choices = ["Left", "Right", "Both"])
+ok_data = datadlg.show()
+if ok_data is None:
+    endExp()
+elif ok_data == 'Right':
+    tvInfo('centerx') = float(tvInfo['leftEdge'])
+    dirExclusions = [0]
+elif ok_data == 'Left':
+    tvInfo('centerx') = float(tvInfo['rightEdge'])
+    dirExclusions == [2]
+else:
+    dirExclusions = []
+
+mon = monitors.Monitor('TV') # Change this to the name of your display monitor
+mon.setWidth(float(tvInfo['Width (cm)']))
+win = visual.Window(
+    size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=True, screen=-1, 
+    winType='pyglet', allowGUI=True, allowStencil=False,
+    monitor= mon, color='grey', colorSpace='rgb',
+    blendMode='avg', useFBO=True, 
+    units='cm')
+
+# Experimental variables
+letters = list("EPB") # Possible stimulus characters to be displayed
+keys = ['e', 'p', 'b', 'space'] # Keypresses to listen for 
+angles = [5, 10, 15, 20, 25, 30, 35, 40] # Retinal eccentricity (opening angle) values to test
+directions = [0, 2] # 0 = Right (0°), 2 = Left (180°)
+distToScreen = tvInfo['Distance to screen (cm)'] # Distance between the subject and the screen in centimeters
+trials = 1 # Number of trails to run
+green= [.207, 1, .259] # Defining green color for center dot
+
+
 # Returns a displayText object with the given text, coordinates, height, color
 def genDisplay(displayInfo):
     displayText = visual.TextStim(win=win,
@@ -145,45 +132,38 @@ def genDisplay(displayInfo):
     languageStyle='LTR',
     depth=0.0)
     return displayText
-    
+
 # Returns a displayText object for the center dot
-def genDot():
-    return genDisplay({'text': '.', 'xPos': tvInfo['centerx'], 'yPos': tvInfo['centery'], 'heightCm': (1.7*tvInfo['height']), 'color': green})
-    
+def genDot(color = green):
+    return genDisplay({'text': '.', 'xPos': float(tvInfo['centerx']), 'yPos': float(tvInfo['centery']),\
+        'heightCm': (5*float(tvInfo['height'])), 'color': color})
+        
 # Takes a value in the form of angle of visual opening and returns the 
 # equivalent value in centimeters (based upon the distToScreen variable)
 def angleCalc(angle):
     radians = math.radians(angle) # Convert angle to radians
     # tan(theta) * distToScreen ... opposite = tan(theta)*adjacent
-    spacer = (math.tan(radians)*tvInfo['Distance to screen']) 
+    spacer = (math.tan(radians)*float(tvInfo['Distance to screen (cm)'])) 
     return spacer
+
     
 # Calculates the height and angle in cm for a stimulus character, as well as the 
 # x and y coordinates, given the display angle, direction, and size (in degrees)
-# IMPORTANT: the value of the spacingAdjustment variable is unique to the monitor 
-# used in our experiment. It will likely need to be changed to achieve proper 
-# stimulus display on another monitor. Trial and error. Similarly, the yOffset 
-# values will likely need to be adjusted (this offset is used to make move the 
-# character to be in line with the exact center of the screen)
 def calculateDisplayCoords(trialInfo, displayInfo): 
     # Stimulus height in cm
-    displayInfo['heightCm'] = (angleCalc(trialInfo['size'])*tvInfo['height']) 
+    displayInfo['heightCm'] = (angleCalc(trialInfo['size'])*float(tvInfo['height'])) 
     # Stimulus display x position
     if trialInfo['dir'] == 0:
-        displayInfo['xPos'] = angleCalc(trialInfo['angle'])*tvInfo['rightx']
+        displayInfo['xPos'] = angleCalc(trialInfo['angle'])*float(tvInfo['rightx'])
     elif trialInfo['dir'] == 2:
-        displayInfo['xPos'] = angleCalc(trialInfo['angle'])*tvInfo['leftx']
-    displayInfo['xPos'] += tvInfo['centerxmult']*displayInfo['heightCm']
+        displayInfo['xPos'] = angleCalc(trialInfo['angle'])*float(tvInfo['leftx'])
+    displayInfo['xPos'] += float(tvInfo['centerx'])
+    displayInfo['xPos'] += float(tvInfo['centerxmult'])*displayInfo['heightCm']
     # Stimulus display y position
-    displayInfo['yPos'] = tvInfo['centerymult']*displayInfo['heightCm']
+    displayInfo['yPos'] = float(tvInfo['centerymult'])*displayInfo['heightCm']
     # Set color to white
     displayInfo['color'] = 'white'
     return displayInfo
-    
-# Returns a boolean indicating whether or not the subject's input matched the 
-# stimulus character
-def checkResponse(response, letter):
-    return (response[0] == letter.lower())
     
 # Staircase algorithm which determines when to end a trial (identifies the 
 # threshold identifiable letter height)
@@ -237,74 +217,74 @@ def stairCase(trialInfo):
         trialInfo['size'] = 0.1
         
     return trialInfo
-    
+
+# Returns a boolean indicating whether or not the subject's input matched the 
+# stimulus character
+def checkResponse(response, letter):
+    if response[0] == 'escape':
+        endExp()
+    return (response[0] == letter.lower())
+
+# Display experiment instructions, end the experiment if the subject presses the esc key
+dispInfo = {'text': 'Press the key corresponding to the character displayed in the periphery (e, p, b),',\
+    'xPos': 0, 'yPos': 7, 'heightCm': 3, 'color': 'white'}
+dispInfo = {'text': 'or space bar if you absolutely can not read it',\
+    'xPos': 0, 'yPos': 3, 'heightCm': 3, 'color': 'white'}
+dispInfo = {'text': 'Press spacebar to continue',\
+    'xPos': 0, 'yPos': -1, 'heightCm': 3, 'color': 'white'}
+key = waitKeys(keyList = ['space', 'escape'])
+if key[0] == 'escape':
+    endExp()
+
+# give the subject a 30 second break and display 
+# a countdown timer on the screen
+def expBreak():
+    dispInfo = {'text': 'Break', 'xPos': 0, 'yPos': 4, 'heightCm': 3, 'color': 'white'}
+    breakText = genDisplay(dispInfo)
+    dispInfo = {'text': '', 'xPos': 0, 'yPos': -1, 'heightCm': 3, 'color': 'white'}
+    for i in range(30):
+        breakText.draw()
+        dispInfo['text'] = str(30-i) + ' seconds'
+        genDisplay(dispInfo).draw()
+        win.flip()
+        time.sleep(1)
+
 # Generate a randomized list of angle and direction pairs. Each pair is 
 # represented as a single integer. The index of the angle (in the angles array) 
 # is multiplied by 10, and the index of the direction (in the directions array) 
-# is added to it. Positive values represent horizontal pairs, and negative 
-# represent vertical.
+# is added to it. 
 def genPairs(angles, directions):
     pairs = list(range(0))
     for i in range(trials):
         for j in range(len(angles)): # Loop through angles
             for k in range(len(directions)): # Loop through directions
+                if directions[k] in dirExclusions:
+                    continue
                 # Append (angle index * 10) + direction index to pairs
                 pairs.append((j*10)+k) 
     shuffle(pairs) # Randomize the pairs list
     return pairs
-    
-# give the subject a 30 second break and display 
-# a countdown timer on the screen
-def expBreak():
-    dispInfo = {'text': 'Break', 'xPos': 0, 'yPos': 0, 'heightCm': 5, 'color': 'white'}
-    breakText = genDisplay(dispInfo)
-    dispInfo = {'text': 'Seconds', 'xPos': +2, 'yPos': -5, 'heightCm': 5, 'color': 'white'}
-    secondsText = genDisplay(dispInfo)
-    dispInfo = {'text': 0, 'xPos': -11, 'yPos': -5, 'heightCm': 5, 'color': 'white'}
-    for i in range(30):
-        win.clearBuffer()
-        breakText.draw()
-        secondsText.draw()
-        dispInfo['text'] = str(30-i)
-        genDisplay(dispInfo).draw()
-        win.flip()
-        core.sleep(1)
-        
-# Display the instructions and wait for a keypress
-def instructions(dispInfo):
-    genDisplay(dispInfo).draw()
-    dispInfo['win'].flip()
-    # Wait until the subject presses a key
-    key = getKeyboardInput(keyL = ['space','escape'], loop = True)
 
-# Display experiment instructions, end the experiment if the subject presses the esc key
-dispInfo = {'text': '    Press the key corresponding to the character \n         displayed in the periphery, or space bar \n                        if you can not read it    \n\n                 Press spacebar to continue',\
-    'xPos': 0, 'yPos': 5, 'heightCm': 5, 'color': 'white', 'win': win}
-instructions(dispInfo):
+pairs = genPairs
 
-dispInfo = {'text': '  Take some time to familiarize yourself with the keys\n\n                       Press spacebar to begin',\
-    'xPos': 0, 'yPos': 0, 'heightCm': 5, 'color': 'white', 'win': win}
-instructions(dispInfo):
-
-# Generate display object for the green dot in the center of the screen
-dot = genDot()
-
-# Generate a list of angle and direction pairs to test
-pairs = genPairs(angles, directions)
 run = 0 # Store the number of trials completed
 for pair in pairs: # Loop through the list of pairs
     
     # Initialize trial variables related to staircase algorithm
+    # Angle index = pair/10
+    # Angle index = pair%10
     trialInfo = {'numReversals': 0, 'totalReversals': 0, 'responses': 0,\
         'thisResponse': False, 'lastResponse': False, 'stairCaseCompleted': False,\
         'angle': angles[int(pair/10)],'dir': directions[int(pair%10)],'size': (angles[int(pair/10)])/10} 
     
-    if trialInfo['dir'] == 0 and angleCalc(trialInfo['angle']) > tvInfo['rightEdge']:
-        continue 
-    elif trialInfo['dir'] == 2 and angleCalc(trialInfo['angle']) < tvInfo['leftEdge']:
-        continue
+    if trialInfo['dir'] == 0:
+        if (float(tvInfo['centerx']) + angleCalc(trialInfo['angle'])) > float(tvInfo['rightEdge']):
+            continue 
+    elif trialInfo['dir'] == 2:
+        if (float(tvInfo['centerx']) - angleCalc(trialInfo['angle'])) < float(tvInfo['leftEdge']):
+            continue
         
-    if(trialInfo['size'] == 0): # Ensure initial letter height is not 0
+    if(trialInfo['size'] < 1): # Ensure initial letter height is not 0
         trialInfo['size'] = 1
     
     # Continue to display the stimulus character and wait for subject input
@@ -317,7 +297,7 @@ for pair in pairs: # Loop through the list of pairs
         # Generate a display object for the stimulus character
         displayText = genDisplay(displayInfo)
         
-        # Display a blank screen with only the center dot on the first trial
+        # Display a blank screen with only the center dot on the first stimulus presentation in the trial
         if trialInfo['responses'] == 0:
             dot.draw()
             win.flip()
@@ -336,7 +316,7 @@ for pair in pairs: # Loop through the list of pairs
             win.flip() # Update the display
             
             # Pause execution for 0.05 seconds and listen for keypress
-            response = getKeyboardInput(keyL = ['e','p','b','space','escape'], loop = False, waitTime = 0.05)
+            response = waitKeys(keyList = ['e', 'p', 'b', 'space', 'escape'], maxWait = 0.05)
             if response:
                break # Break if a keypress was detected
                
@@ -357,7 +337,7 @@ for pair in pairs: # Loop through the list of pairs
 
     # Halfway through the trial, give the subject a 30 second break and display 
     # a countdown timer on the screen
-    if run == (int(len(pairs)/2)):
+    if len(dirExclusions) == 0 and run == (int(len(pairs)/2)):
         expBreak()
 
 # End the experiment after all eccentricity/direction pairs have been completed
