@@ -12,7 +12,7 @@ def csvOutput(output, fileName):
         writer.writerow(output)
     csvFile.close()
 
-info = {'Width (px)': '3840', 'Height (px)': '2160', 'Width (cm)': '122.88', 'Distance to screen (cm)': '50'}
+info = {'Width (px)': '3840', 'Height (px)': '2160', 'Width (cm)': '122.38', 'Distance to screen (cm)': '50', 'Screen number (Try 0, 1, 2, or -1)': 0}
 # Input dialogue: session type, subject code
 dlg = gui.DlgFromDict(dictionary=info, sortKeys=False, title='TV Info')
 if dlg.OK == False:
@@ -21,30 +21,30 @@ if dlg.OK == False:
 tvInfo = {'Width (px)': info['Width (px)'],\
     'Height (px)': info['Height (px)'],\
     'Width (cm)': info['Width (cm)'],\
-    'Distance to screen (cm)':  info['Distance to screen (cm)'],\
+    'Distance to screen':  info['Distance to screen (cm)'],\
+    'Screen number': info['Screen number (Try 0, 1, 2, or -1)'],\
     'height': 0,\
     'centerx': 0,\
     'centery': 0,\
-    'centerxmult': 0,\
-    'centerymult': 0,\
     'rightx': 0,\
     'rightEdge': 0,\
     'leftx': 0,\
-    'leftEdge': 0}
+    'leftEdge': 0,\
+    'spacer': 0}
 
 mon = monitors.Monitor('TV') # Change this to the name of your display monitor
 mon.setWidth(float(tvInfo['Width (cm)']))
 win = visual.Window(
-    size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=True, screen=-1, 
+    size=(int(tvInfo['Width (px)']), int(tvInfo['Height (px)'])), fullscr=True, screen=tvInfo['Screen number'], 
     winType='pyglet', allowGUI=True, allowStencil=False,
     monitor= mon, color='grey', colorSpace='rgb',
     blendMode='avg', useFBO=True, 
     units='cm')
         
-# Initialize keyboard for subject input
-#kb = keyboard.Keyboard(bufferSize = 1)
 
-dotSize = 5
+dotSize = 1.7
+chSize = 0.3
+tSize = 0.3
 
 green = [.207, 1, .259]
 
@@ -83,19 +83,20 @@ def checkHeightResponse(info):
     
 def setHeight(tvInfo):
     heights = [1, 3, 7, 10]
+    final = 0
     for height in heights:
         info = {'adjuster': 1, 'increment': 0.1, 'lastResponse': None, 'thisResponse': None, 'complete': False}
         while not info['complete']:
-            genDisplay({'text': 'Press down arrow to reduce size, up arrow to increase. Press spacebar once the I is', 'heightCm': 2, 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-            genDisplay({'text': str(height) + ' centimeters tall', 'heightCm': 2, 'xPos': 0, 'yPos': 7, 'color': 'white'}).draw()
-            genDisplay({'text': 'I', 'heightCm': (height*info['adjuster']), 'xPos': 0, 'yPos': 0, 'color': 'white'}).draw()
+            genDisplay({'text': 'Press down arrow to reduce size, up arrow to increase. Press spacebar once the I is', 'heightCm': tSize, 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+            genDisplay({'text': str(height) + ' centimeters tall', 'heightCm': tSize, 'xPos': 0, 'yPos': 0, 'color': 'white'}).draw()
+            genDisplay({'text': 'I', 'heightCm': (height*info['adjuster']), 'xPos': 0, 'yPos': -2, 'color': 'white'}).draw()
             win.flip()
             
             info['lastResponse'] = info['thisResponse']
             info['thisResponse'] = getKeyboardInput()
             info = checkHeightResponse(info)
-        tvInfo['height'] += info['adjuster']/height
-    tvInfo['height'] = tvInfo['height']/(len(heights))
+        final += info['adjuster']
+    tvInfo['height'] = final/(len(heights))
     return tvInfo
 
 def checkCenterResponse(info):
@@ -111,11 +112,11 @@ def checkCenterResponse(info):
         info['x'] += 0.05
     return info 
     
-def setDotCenter(tvInfo):
+def setCenter(tvInfo):
     info = {'x': 0, 'y': 0, 'complete': False}
     while not info['complete']:
             
-        genDisplay({'text': 'Use the arrow keys to move the dot. Press spacebar once the dot is centered on the A', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
+        genDisplay({'text': 'Use the arrow keys to move the dot. Press spacebar once the dot is centered on the A', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
         genDisplay({'text': 'A', 'heightCm': (1*tvInfo['height']), 'xPos': 0, 'yPos': 0, 'color': 'white'}).draw()
         genDisplay({'text': '.', 'heightCm': (dotSize*tvInfo['height']), 'xPos': info['x'], 'yPos': info['y'], 'color': 'lawngreen'}).draw()
         win.flip()
@@ -123,24 +124,6 @@ def setDotCenter(tvInfo):
         info['response'] = getKeyboardInput()
         info = checkCenterResponse(info)
     tvInfo['centerx'], tvInfo['centery'] = info['x'], info['y']
-    return tvInfo
-
-def setCenter(tvInfo):
-    heights = [0.5, 3, 7, 10, 15]
-    for height in heights:
-        info = {'x': 0, 'y': 0, 'complete': False}
-        while not info['complete']:
-            genDisplay({'text': 'Use the arrow keys to move the E. Press spacebar once the E is centered on the dot', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-            genDisplay({'text': 'E', 'heightCm': (height*tvInfo['height']), 'xPos': (0+info['x']), 'yPos': (0+info['y']), 'color': 'white'}).draw()
-            genDisplay({'text': '.', 'xPos': tvInfo['centerx'], 'yPos': tvInfo['centery'], 'heightCm': (dotSize*tvInfo['height']), 'color': 'lawngreen'}).draw()
-            win.flip()
-            
-            info['response'] = getKeyboardInput()
-            info = checkCenterResponse(info)
-        tvInfo['centerxmult'] += info['x']/height
-        tvInfo['centerymult'] += info['y']/height
-    tvInfo['centerxmult'] = tvInfo['centerxmult']/len(heights)
-    tvInfo['centerymult'] = tvInfo['centerymult']/len(heights)
     return tvInfo
     
 def checkRightResponse(info):
@@ -155,13 +138,13 @@ def checkRightResponse(info):
     return info 
     
 def setRight(tvInfo):
-    angles = [2, 5, 10, 15, 20]
+    angles = [2, 3, 5, 7, 10]
     for angle in angles:
         info = {'adjuster': 1, 'increment': 0.1, 'lastResponse': None, 'thisResponse': None,'complete': False}
         while not info['complete']:
-            genDisplay({'text': 'Arrow keys to move the I. Press spacebar once the center of the I is', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-            genDisplay({'text': str(angle) + ' centimeters to the right of the center dot', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 7, 'color': 'white'}).draw()
-            genDisplay({'text': 'I', 'heightCm': (5*tvInfo['height']), 'xPos': ((angle*info['adjuster'])+(5*tvInfo['centerxmult'])), 'yPos': (5*tvInfo['centerymult']), 'color': 'white'}).draw()
+            genDisplay({'text': 'Arrow keys to move the I. Press spacebar once the center of the I is', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 5, 'color': 'white'}).draw()
+            genDisplay({'text': str(angle) + ' centimeters to the right of the center dot', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+            genDisplay({'text': 'I', 'heightCm': (tSize*tvInfo['height']), 'xPos': (angle*info['adjuster']), 'yPos': 0, 'color': 'white'}).draw()
             genDisplay({'text': '.', 'xPos': tvInfo['centerx'], 'yPos': tvInfo['centery'], 'heightCm': (dotSize*tvInfo['height']), 'color': 'lawngreen'}).draw()
             win.flip()
             
@@ -169,21 +152,21 @@ def setRight(tvInfo):
             
             info['thisResponse'] = getKeyboardInput()
             info = checkRightResponse(info)
-        tvInfo['rightx'] += info['adjuster']/angle
+        tvInfo['rightx'] += info['adjuster']
     tvInfo['rightx'] = tvInfo['rightx']/len(angles)
     return tvInfo
     
 def setRightEdge(tvInfo):
     info = {'adjuster': 0, 'increment': 5, 'lastResponse': None, 'thisResponse': None,'complete': False}
     while not info['complete']:
-        genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-        genDisplay({'text': 'at the right edge of the screen', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 7, 'color': 'white'}).draw()
-        genDisplay({'text': 'I', 'heightCm': (5*tvInfo['height']), 'xPos': (info['adjuster']+(5*tvInfo['centerxmult'])), 'yPos': (5*tvInfo['centerymult']), 'color': 'white'}).draw()
+        genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 5, 'color': 'white'}).draw()
+        genDisplay({'text': 'at the right edge of the screen', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+        genDisplay({'text': 'I', 'heightCm': (tSize*tvInfo['height']), 'xPos': info['adjuster'], 'yPos': 0, 'color': 'white'}).draw()
         win.flip()
             
         info['lastResponse'], info['thisResponse'] = info['thisResponse'], getKeyboardInput()
         info = checkRightResponse(info)
-    tvInfo['rightEdge'] = (info['adjuster']/tvInfo['rightx']) -10
+    tvInfo['rightEdge'] = (info['adjuster']/tvInfo['rightx'])
     return tvInfo
     
 def checkLeftResponse(info):
@@ -198,42 +181,59 @@ def checkLeftResponse(info):
     return info 
     
 def setLeft(tvInfo):
-    angles = [2, 5, 10, 15, 20]
+    angles = [2, 3, 5, 7, 10]
     for angle in angles:
         info = {'adjuster': -(tvInfo['rightx']), 'increment': -0.1, 'lastResponse': None, 'thisResponse': None,'complete': False}
         while not info['complete']:
-            genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-            genDisplay({'text': str(angle) + ' centimeters to the left of the center dot', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 7, 'color': 'white'}).draw()
-            genDisplay({'text': 'I', 'heightCm': (5*tvInfo['height']), 'xPos': ((angle*info['adjuster'])+(5*tvInfo['centerxmult'])), 'yPos': (5*tvInfo['centerymult']), 'color': 'white'}).draw()
+            genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 5, 'color': 'white'}).draw()
+            genDisplay({'text': str(angle) + ' centimeters to the left of the center dot', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+            genDisplay({'text': 'I', 'heightCm': (tSize*tvInfo['height']), 'xPos': (angle*info['adjuster']), 'yPos': 0, 'color': 'white'}).draw()
             genDisplay({'text': '.', 'xPos': tvInfo['centerx'], 'yPos': tvInfo['centery'], 'heightCm': (dotSize*tvInfo['height']), 'color': 'lawngreen'}).draw()
             win.flip()
             
             info['lastResponse'], info['thisResponse'] = info['thisResponse'], getKeyboardInput()
             info = checkLeftResponse(info)
-        tvInfo['leftx'] += info['adjuster']/angle
+        tvInfo['leftx'] += info['adjuster']
     tvInfo['leftx'] = tvInfo['leftx']/len(angles)
     return tvInfo
     
 def setLeftEdge(tvInfo):
     info = {'adjuster': 0, 'increment': -5, 'lastResponse': None, 'thisResponse': None,'complete': False}
     while not info['complete']:
-        genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 10, 'color': 'white'}).draw()
-        genDisplay({'text': 'at the left edge of the screen', 'heightCm': (2*tvInfo['height']), 'xPos': 0, 'yPos': 7, 'color': 'white'}).draw()
-        genDisplay({'text': 'I', 'heightCm': (5*tvInfo['height']), 'xPos': (info['adjuster']+(5*tvInfo['centerxmult'])), 'yPos': (5*tvInfo['centerymult']), 'color': 'white'}).draw()
+        genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 5, 'color': 'white'}).draw()
+        genDisplay({'text': 'at the left edge of the screen', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+        genDisplay({'text': 'I', 'heightCm': (tSize*tvInfo['height']), 'xPos': info['adjuster'], 'yPos': 0, 'color': 'white'}).draw()
         win.flip()
             
         info['lastResponse'], info['thisResponse'] = info['thisResponse'], getKeyboardInput()
         info = checkLeftResponse(info)
-    tvInfo['leftEdge'] = (info['adjuster']/tvInfo['leftx']) + 10
+    tvInfo['leftEdge'] = (info['adjuster']/tvInfo['leftx'])
+    return tvInfo
+    
+def setSpacer(tvInfo):
+    heights = [3, 5]
+    for height in heights:
+        info = {'adjuster': -1, 'increment': 0.1, 'lastResponse': None, 'thisResponse': None,'complete': False}
+        while not info['complete']:
+            genDisplay({'text': 'Use the arrow keys to move the I. Press spacebar once the I is', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 5, 'color': 'white'}).draw()
+            genDisplay({'text': '0.1 cm below the E', 'heightCm': (chSize*tvInfo['height']), 'xPos': 0, 'yPos': 3, 'color': 'white'}).draw()
+            genDisplay({'text': 'E', 'heightCm': (height*tvInfo['height']), 'xPos': 0, 'yPos': 0, 'color': 'white'}).draw()
+            genDisplay({'text': 'I', 'heightCm': (height*tvInfo['height']), 'xPos': 0, 'yPos': (height*info['adjuster']), 'color': 'white'}).draw()
+            win.flip()
+            
+            info['lastResponse'], info['thisResponse'] = info['thisResponse'], getKeyboardInput()
+            info = checkHeightResponse(info)
+        tvInfo['spacer'] += (-info['adjuster'])
+    tvInfo['spacer'] = tvInfo['spacer']/len(heights)
     return tvInfo
 
 tvInfo = setHeight(tvInfo)
-tvInfo = setDotCenter(tvInfo)
 tvInfo = setCenter(tvInfo)
 tvInfo = setRight(tvInfo)
 tvInfo = setRightEdge(tvInfo)
 tvInfo = setLeft(tvInfo)
 tvInfo = setLeftEdge(tvInfo)
+tvInfo = setSpacer(tvInfo)
 
 # Change directory to script directory
 _thisDir = os.path.dirname(os.path.abspath(__file__))
