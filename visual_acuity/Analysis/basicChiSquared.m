@@ -1,67 +1,93 @@
 
-experimentName = 'Isolated Character';
-subjectName = 'BRADEN';
 
-data = readCsv(experimentName, subjectName, 'both');
+close all;
+clear variables;
 
-data(:,2) = data(:,2).*data(:,1);
+subjectName = 'BRIAN_TA';
 
-twoParameterGraph = figure();
+folder = fullfile(pwd, 'Plots', subjectName);
+mkdir(folder);
 
-% Set the discreteCol to your x-vals column (retinal eccentricity)
-avgData = averageData(data, 1);
+info_csv = fullfile(pwd, 'protocol_info.csv');
+protocolInfo = table2struct(readtable(info_csv));
 
-avgData = calculateStandardErrors(experimentName, 1, avgData);
+oneParamTemplate = fullfile(pwd, 'one_param_struct.csv');
+twoParamTemplate = fullfile(pwd, 'two_param_struct.csv');
 
-xvals = avgData(:,1)';
-yvals = avgData(:,2)';
-sErrors = avgData(:,4)';
+oneParamOutput = table2struct(readtable(oneParamTemplate));
+twoParamOutput = table2struct(readtable(twoParamTemplate));
 
-sErrors(sErrors == 0) = 0.00000001;
+oneParamOutput.name = subjectName;
+twoParamOutput.name = subjectName;
 
-weights = 1./sErrors;
+oneParamGraph = figure();
+twoParamGraph = figure();
 
-f = @(x, xvals, yvals, weights)sum(weights.*((yvals-((xvals.*x(1))+x(2))).^2));
-fun = @(x)f(x,xvals,yvals,weights);
+for i=1:length(protocolInfo)
+    color = str2num(protocolInfo(i).color);
+    experimentName = protocolInfo(i).protocolName;
+    discreteCol = protocolInfo(i).discreteCol;
+    id = protocolInfo(i).id;
 
-approx = polyfit(xvals, yvals, 1);
+    data = readCsv(experimentName, subjectName, 'both');
+    
+    if(isempty(data))
+        continue;
+    end
 
-ms = MultiStart;
-problem = createOptimProblem('fmincon','x0',approx, ...
-    'objective', fun, 'lb', [0, -1], 'ub', [1,1]);
+    data(:,2) = data(:,2).*data(:,1);
 
-params = run(ms, problem, 50);
+    oneParamChiGraph = figure();
+    twoParamChiGraph = figure();
 
-slope = params(1);
-intercept = params(2);
+    % Set the discreteCol to your x-vals column (retinal eccentricity)
+    avgData = averageData(data, discreteCol);
 
-twoParamChi = fun(params);
+    avgData = calculateStandardErrors(experimentName, discreteCol, avgData);
 
-twoParamReducedChi = twoParamChi/(length(xvals)-2);
-disp(twoParamReducedChi);
+    oneParamOutput = oneParamChiSquared(avgData, experimentName, id, color, ...
+        oneParamGraph, oneParamChiGraph, oneParamOutput);
 
-pointSlope(avgData, slope, intercept, 'k', experimentName, ...
-    twoParameterGraph);
+    twoParamOutput = twoParamChiSquared(avgData, experimentName, id, color, twoParamGraph, ...
+        twoParamChiGraph, twoParamOutput);
+    
+    saveas(oneParamChiGraph, ...
+        fullfile(folder, strcat(experimentName, '_one_param_chi_sq.png')));
+    
+    saveas(twoParamChiGraph, ...
+        fullfile(folder, strcat(experimentName, '_two_param_chi_sq.png')));
 
-f = @(x, xvals, yvals, weights)sum((weights.*((yvals-(xvals.*x))).^2));
-fun = @(x)f(x, xvals, yvals, weights);
-
-[slope, oneParamChi] = fminbnd(fun, 0, 1);
-
-oneParamReducedChi = oneParamChi/(length(xvals)-1);
-disp(oneParamReducedChi);
-
-oneParameterGraph = figure();
-
-pointSlope(avgData, slope, 0, 'k', experimentName, ...
-    oneParameterGraph);
-
-
-
-
-
+end
 
 
+saveas(oneParamGraph, fullfile(folder, 'one_parameter_graph.png'));
+
+saveas(twoParamGraph, fullfile(folder, 'two_parameter_graph.png'));
+
+paramFolder = fullfile(pwd, 'Parameters');
+mkdir(paramFolder);
+
+
+
+oneParam = struct2table(oneParamOutput);
+fileName = fullfile(pwd, 'Parameters', 'one_parameter_statistics.csv');
+
+if(exist(fileName, 'file') ~= 2)
+    writetable(oneParam, fileName, 'WriteRowNames', true);
+else
+    writetable(oneParam, fileName, 'WriteRowNames', false, ...
+        'WriteMode', 'Append');
+end
+
+twoParam = struct2table(twoParamOutput);
+fileName = fullfile(pwd, 'Parameters', 'two_parameter_statistics.csv');
+
+if(exist(fileName, 'file') ~= 2)
+    writetable(twoParam, fileName, 'WriteRowNames', true);
+else
+    writetable(twoParam, fileName, 'WriteRowNames', false, ...
+        'WriteMode', 'Append');
+end
 
 
 
